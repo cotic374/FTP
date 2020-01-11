@@ -15,18 +15,20 @@
     time_t    st_ctime;    time of last status change 
 };
 */
+
 #include <stdio.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <string.h>
 #include <stdlib.h>
 #include <sys/sendfile.h>
-#include <fcntl.h>
-#include <vector.h>
+
+
 
 #define LISTENQ 5
-void upload();
+
 /*TBD
+void upload();
 void mainmenu(){
 	int option;
 	scanf("%d",&option);
@@ -54,12 +56,22 @@ void mainmenu(){
 			exit(1)
 }
 */
+/*----zaladowanie wyjscia terminalu do bufora----*/
+
+
+char* exec(const char* cmd) {
+    char* buffer[128];
+    char* result = "";
+    FILE* pipe = popen(cmd, "r");
+    pclose(pipe);
+    return result;
+}
+
 int main(int argc, char* argv[])
 {
     int listenfd, connfd;
     char buf[100], command[5], filename[20];
     struct sockaddr_in serverAddr, cliAddr;
-    struct stat obj;
     int k, i, size, len, c;
     socklen_t clilen;
     pid_t pid;
@@ -67,7 +79,7 @@ int main(int argc, char* argv[])
     /*---- Create the socket. The three arguments are: ----*/
     /* 1) Internet domain 2) Stream socket 3) Default protocol (TCP in this case) */
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock == -1) {
+    if (listenfd == -1) {
         printf("Socket creation failed");
         exit(1);
     }
@@ -93,8 +105,8 @@ int main(int argc, char* argv[])
     /*---- Send message to the socket of the incoming connection ----*/
     /*----Koniec inicjalizacji, poczatek obslugi komend ----*/
     while (1) {
-        clilen = sizeof(cliaddr);
-        if ((connfd = accept(listenfd, (SA*)&cliaddr, &clilen)) < 0) {
+        clilen = sizeof(cliAddr);
+        if ((connfd = accept(listenfd, (struct sockaddr *) &cliAddr, &clilen)) < 0) {
             printf("Accept error");
             exit(1);
         }
@@ -108,18 +120,11 @@ int main(int argc, char* argv[])
         }
         else if (pid == 0) {
             /*----pobranie komendy----*/
-            recv(connfd, buf, 100, 0);
+            recv(connfd, buf, sizeof(buf), 0);
             sscanf(buf, "%s", command);
-
-            /*----zaladowanie wyjscia terminalu do buffora----*/
-            std::vector<char> bufpipe;
-            FILE* pipe = popen(command, "r");
-            while (fgets(bufpipe, sizeof bufpipe, pipe) != NULL) {
-                buf += bufpipe;
-            }
-            pclose(pipe);
-            close(connfd);
-            break;
+	    strncpy(buf,exec(command),sizeof(buf));
+	    send(connfd, buf, sizeof(buf),0);
+            
         }
     }
     return 0;
