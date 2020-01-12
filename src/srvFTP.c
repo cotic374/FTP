@@ -22,6 +22,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/sendfile.h>
+#include <string.h>
 
 
 
@@ -59,12 +60,13 @@ void mainmenu(){
 /*----zaladowanie wyjscia terminalu do bufora----*/
 
 
-char* exec(const char* cmd) {
-    char* buffer[128];
-    char* result = "";
+void exec(int connfd, char* buffer, int buffersize, const char* cmd) {
     FILE* pipe = popen(cmd, "r");
+    while (fgets(buffer, sizeof buffer, pipe) != NULL) {
+
+            send(connfd, buffer, strlen(buffer),0); 
+    }
     pclose(pipe);
-    return result;
 }
 
 int main(int argc, char* argv[])
@@ -72,7 +74,7 @@ int main(int argc, char* argv[])
     int listenfd, connfd;
     char buf[100], command[5], filename[20];
     struct sockaddr_in serverAddr, cliAddr;
-    int k, i, size, len, c;
+    int k, i, size, len, sndbuf;
     socklen_t clilen;
     pid_t pid;
 
@@ -83,12 +85,16 @@ int main(int argc, char* argv[])
         printf("Socket creation failed");
         exit(1);
     }
+	serverAddr.sin_family = AF_INET;
 
     /* Set port number, using htons function to use proper byte order */
     serverAddr.sin_port = htons(7891);
     /* Set IP address to localhost */
-    serverAddr.sin_addr.s_addr = 0;
-
+    serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	sndbuf = 1;               
+        if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &sndbuf, sizeof(sndbuf)) < 0){
+                printf("setsockopt error");
+        }
     /*---- Bind the address struct to the socket ----*/
     k = bind(listenfd, (struct sockaddr*)&serverAddr, sizeof(serverAddr));
     if (k == -1) {
@@ -119,12 +125,16 @@ int main(int argc, char* argv[])
             continue;
         }
         else if (pid == 0) {
+	    close(listenfd);
             /*----pobranie komendy----*/
             recv(connfd, buf, sizeof(buf), 0);
+printf("1 ");
             sscanf(buf, "%s", command);
-	    strncpy(buf,exec(command),sizeof(buf));
-	    send(connfd, buf, sizeof(buf),0);
-            
+printf(command);
+sleep(2);
+	    exec(connfd, buf, sizeof(buf), command);
+printf("4 ");
+     
         }
     }
     return 0;
