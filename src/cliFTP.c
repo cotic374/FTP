@@ -26,7 +26,7 @@ int main(){
   /*---- Connect the socket to the server using the address struct ----*/
   addr_size = sizeof serverAddr;
   connect(clientSocket, (struct sockaddr *) &serverAddr, addr_size);
-  strncpy(buffer,"ls",sizeof(buffer));
+  strncpy(buffer,"ls -l",sizeof(buffer));
 printf(buffer);
   send(clientSocket, buffer, 1024,0);
   /*---- Read the message from the server into the buffer ----*/
