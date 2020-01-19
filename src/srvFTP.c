@@ -9,6 +9,7 @@
 
 
 #define LISTENQ 5
+#define BUFFSIZE 1024
 
 /*TBD
 void upload();
@@ -16,7 +17,7 @@ void mainmenu(){
 	int option;
 	scanf("%d",&option);
 	switch(option){
-		
+
 		case 1//przeslij plik
 			upload();
 			break;
@@ -40,23 +41,75 @@ void mainmenu(){
 }
 */
 /*----zaladowanie wyjscia terminalu do bufora----*/
+void socket_read_bytes(int socket_fd, const char* buf, size_t size) {
+  size_t pos = 0;
 
-
-void exec(int connfd, char* buffer, int buffersize, const char* cmd) {
-    FILE* pipe = popen(cmd, "r");
-    while (fgets(buffer, buffersize, pipe) != NULL) {
-            send(connfd, buffer, strlen(buffer),0); 
+  while (pos < size) {
+    ssize_t n = send(socket_fd, buf + pos, size - pos,0);
+    if (n == -1) {
+      puts("send error"); break;
     }
-    pclose(pipe);
+    if (n == 0) {
+      break;
+    }
+
+    pos += n;
+  }
 }
+void socket_write_bytes(int socket_fd, const char* buf, size_t size) {
+  size_t pos = 0;
+
+  while (pos < size) {
+    ssize_t n = send(socket_fd, buf + pos, size - pos,0);
+    if (n <= 0) {
+      puts("send error"); break;
+    }
+
+    pos += n;
+  }
+}
+
+char* read_command_output(const char* command) {
+    const int CHUNK = 1024;
+
+    FILE* pipe = popen(command, "r");
+    if (pipe == NULL) { puts("popen failed"); exit(1); }
+
+    int capacity = CHUNK;
+    int position = 0;
+    char* buffer = malloc(capacity);
+    if (buffer == NULL) { puts("malloc failed"); exit(1); }
+
+    for (;;) {
+        if (position + CHUNK > capacity) {
+            capacity *= 2;
+            buffer = realloc(buffer, capacity);
+            if (buffer == NULL) { puts("realloc failed"); exit(1); }
+        }
+        int bytes_read = fread(buffer + position, 1, CHUNK, pipe);
+        position += bytes_read;
+        if (bytes_read < CHUNK) {
+            break;
+        }
+    }
+
+    buffer = realloc(buffer, position + 1);
+    if (buffer == NULL) { puts("realloc failed"); exit(1); }
+    buffer[position] = '\0';
+
+    pclose(pipe);
+    return buffer;
+}
+
 
 int main(int argc, char* argv[])
 {
     int listenfd, connfd;
-    char buf[100], command[5], filename[20];
+    char buf[BUFFSIZE], command[5], filename[20];
     struct sockaddr_in serverAddr, cliAddr;
     int k, i, size, len, sndbuf;
     socklen_t clilen;
+    char* huj;
     pid_t pid;
 
     /*---- Create the socket. The three arguments are: ----*/
@@ -72,7 +125,7 @@ int main(int argc, char* argv[])
     serverAddr.sin_port = htons(7891);
     /* Set IP address to localhost */
     serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	sndbuf = 1;               
+	sndbuf = 1;
         if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &sndbuf, sizeof(sndbuf)) < 0){
                 printf("setsockopt error");
         }
@@ -114,9 +167,10 @@ printf("1");
             sprintf(command, "%s", buf);
 printf(command);
 sleep(2);
-	    exec(connfd, buf, sizeof(buf), command);
-printf("4 ");
-     
+	    huj=read_command_output(command);
+	    sprintf(buf, "%s", huj);
+printf(buf);
+            send(connfd, buf, BUFFSIZE,0);
         }
     }
     return 0;
