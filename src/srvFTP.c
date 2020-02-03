@@ -39,13 +39,20 @@ void mainmenu(){
 		case 7 //wyjdz
 			exit(1)
 }
+----zaladowanie wyjscia terminalu do bufora----
+void send_packet(int socket_fd, const char* buf){
+
+
+
+
+  socket_send_bytes(socket_fd, const char*buf)
+}
 */
-/*----zaladowanie wyjscia terminalu do bufora----*/
-void socket_read_bytes(int socket_fd, const char* buf, size_t size) {
+void socket_recv_bytes(int socket_fd, const char* buf, size_t size) {
   size_t pos = 0;
 
   while (pos < size) {
-    ssize_t n = send(socket_fd, buf + pos, size - pos,0);
+    ssize_t n = recv(socket_fd, buf + pos, size - pos,0);
     if (n == -1) {
       puts("send error"); break;
     }
@@ -56,7 +63,7 @@ void socket_read_bytes(int socket_fd, const char* buf, size_t size) {
     pos += n;
   }
 }
-void socket_write_bytes(int socket_fd, const char* buf, size_t size) {
+void socket_send_bytes(int socket_fd, const char* buf, size_t size) {
   size_t pos = 0;
 
   while (pos < size) {
